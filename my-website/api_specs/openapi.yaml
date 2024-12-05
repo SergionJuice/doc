@@ -1,0 +1,612 @@
+openapi: 3.0.3
+info:
+  title: Проектирование API по курсовой
+  version: "0.3."
+  description: API для управления проблемами и отчётами в городской службе и интерфейсе аналитиков.
+
+tags:
+  - name: Analysts
+    description: Эндпоинты для взаимодействия аналитиков с системой.
+  - name: CityService
+    description: Эндпоинты для взаимодействия городской службы с системой.
+  - name: Notifications
+    description: Уведомления для аналитиков и городской службы.
+
+paths:
+  # Эндпоинты аналитиков
+  /api/analyst/problems:
+    get:
+      tags:
+        - Analysts
+      summary: Просмотр списка некатегоризированных проблем
+      description: Возвращает список проблем, не имеющих категории, с возможностью поиска и сортировки.
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Поиск по ID или названию проблемы.
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [created_at, priority]
+          description: Сортировка по дате создания или уровню важности.
+      responses:
+        '200':
+          description: Список некатегоризированных проблем.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Problem'
+        '400':
+          description: Ошибка запроса.
+
+  /api/analyst/problems/{problem_id}:
+    get:
+      tags:
+        - Analysts
+      summary: Просмотр информации о конкретной проблеме
+      description: Возвращает подробную информацию о проблеме для аналитика.
+      parameters:
+        - in: path
+          name: problem_id
+          schema:
+            type: string
+          required: true
+          description: ID проблемы.
+      responses:
+        '200':
+          description: Подробная информация о проблеме.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Проблема не найдена.
+
+    patch:
+      tags:
+        - Analysts
+      summary: Обновление категории и уровня важности проблемы
+      description: Позволяет аналитику назначить категорию и уровень важности.
+      parameters:
+        - in: path
+          name: problem_id
+          schema:
+            type: string
+          required: true
+          description: ID проблемы.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProblemUpdate'
+      responses:
+        '200':
+          description: Проблема успешно обновлена.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '400':
+          description: Ошибка запроса.
+        '404':
+          description: Проблема не найдена.
+
+  /api/analyst/problems/{problem_id}/send-to-service:
+    post:
+      tags:
+        - Analysts
+      summary: Отправка проблемы в городскую службу
+      description: Отправляет проблему в городскую службу после присвоения категории и приоритета.
+      parameters:
+        - in: path
+          name: problem_id
+          schema:
+            type: string
+          required: true
+          description: ID проблемы.
+      responses:
+        '201':
+          description: Проблема успешно отправлена в городскую службу.
+        '400':
+          description: Ошибка запроса.
+        '404':
+          description: Проблема не найдена.
+
+  /api/analyst/reports:
+    get:
+      tags:
+        - Analysts
+      summary: Просмотр отчётов о завершённых проблемах
+      description: Возвращает список отчётов с возможностью поиска, фильтрации и сортировки.
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Поиск по ID проблемы или названию.
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [closed_at, category]
+          description: Сортировка по дате закрытия или категории.
+      responses:
+        '200':
+          description: Список отчётов о завершённых проблемах.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Report'
+        '400':
+          description: Ошибка запроса.
+
+  /api/analyst/notifications/new:
+    get:
+      tags:
+        - Notifications
+      summary: Уведомления о новых некатегоризированных проблемах
+      description: Возвращает уведомление, если появились новые некатегоризированные проблемы.
+      responses:
+        '200':
+          description: Уведомление о новых проблемах.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewProblemNotification'
+        '204':
+          description: Нет новых проблем.
+
+  /api/analyst/notifications/reports:
+    get:
+      tags:
+        - Notifications
+      summary: Уведомления о новых отчётах для аналитиков
+      description: Возвращает уведомление, если появились новые отчёты для аналитиков.
+      responses:
+        '200':
+          description: Уведомление о новых отчётах.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewReportNotification'
+        '204':
+          description: Нет новых отчётов.
+
+  # Эндпоинты городской службы
+  /api/service/unassigned-problems:
+    get:
+      tags:
+        - CityService
+      summary: Просмотр списка нераспределённых проблем
+      description: Возвращает список проблем, нераспределённых среди сотрудников службы.
+      responses:
+        '200':
+          description: Список нераспределённых проблем.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Problem'
+        '400':
+          description: Ошибка запроса.
+  /api/service/problems/{problem_id}/management:
+    get:
+      tags:
+        - CityService
+      summary: "Получить данные для экрана управления заявкой"
+      description: "Возвращает информацию о проблеме, а также доступные службы и сотрудников для назначения."
+      parameters:
+        - name: problem_id
+          in: path
+          required: true
+          description: "ID проблемы, для которой требуется управление заявкой"
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Успешное получение данных для управления заявкой"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManageProblemScreen'
+        '404':
+          description: "Проблема не найдена"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/service/problems/{problem_id}/management/assign:
+    patch:
+      tags:
+        - CityService
+      summary: Назначение сотрудника и службы на проблему
+      description: Позволяет назначить службу и сотрудника на выполнение проблемы.
+      parameters:
+        - in: path
+          name: problem_id
+          schema:
+            type: string
+          required: true
+          description: ID проблемы.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Assignment'
+      responses:
+        '200':
+          description: Проблема успешно назначена на службу и сотрудника.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assignment'
+        '400':
+          description: Ошибка запроса.
+        '404':
+          description: Проблема не найдена.
+  /api/service/problems/{problem_id}/management/send-to-service:
+    post:
+      tags:
+        - CityService
+      summary: Отправка проблемы сотруднику службы
+      parameters:
+        - in: path
+          name: problem_id
+          schema:
+            type: string
+          required: true
+          description: ID проблемы.
+      responses:
+        '201':
+          description: Проблема успешно отправлена сотруднику.
+        '400':
+          description: Ошибка запроса.
+        '404':
+          description: Проблема не найдена.
+
+  /api/service/active-tasks:
+    get:
+      tags:
+        - CityService
+      summary: Просмотр активных задач
+      description: Возвращает список задач, находящихся в работе.
+      responses:
+        '200':
+          description: Список активных задач.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ActiveTask'
+        '400':
+          description: Ошибка запроса.
+
+  /api/service/active-tasks/{task_id}/close:
+    patch:
+      tags:
+        - CityService
+      summary: Закрытие задачи
+      description: Закрывает задачу и убирает её из списка активных задач.
+      parameters:
+        - in: path
+          name: task_id
+          schema:
+            type: string
+          required: true
+          description: ID задачи.
+      responses:
+        '200':
+          description: Задача успешно закрыта.
+        '400':
+          description: Ошибка запроса.
+        '404':
+          description: Задача не найдена.
+
+  /api/service/notifications/unassigned:
+    get:
+      tags:
+        - Notifications
+      summary: Уведомления о новых заявках для городской службы
+      description: Возвращает уведомление о новых нераспределённых заявках для городской службы.
+      responses:
+        '200':
+          description: Уведомление о новых заявках.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewRequestNotification'
+        '204':
+          description: Нет новых заявок.
+
+components:
+  schemas:
+    Problem:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "12345"
+        title:
+          type: string
+          example: "Нет воды в доме"
+        description:
+          type: string
+          example: "Прорыв трубы на улице"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-11-14T12:34:56Z"
+        priority:
+          type: string
+          enum: ["Обычная", "Средняя", "Экстренная"]
+        location:
+          $ref: '#/components/schemas/Location'
+      required:
+        - id
+        - title
+        - description
+        - created_at
+        - priority
+        - location
+
+    ProblemDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        location:
+          $ref: '#/components/schemas/Location'
+        category:
+          type: string
+          enum: ["Водоснабжение", "Электроснабжение", "Газоснабжение", "Ремонт", "Уборка"]
+        priority:
+          type: string
+          enum: ["Обычная","Средняя", "Экстренная"]
+        assigned_to:
+          type: string
+          example: "Сергей Иванов"
+        status:
+          type: string
+          enum: ["В работе", "Ожидание", "В очереди", "Выполнено"]
+      required:
+        - id
+        - title
+        - description
+        - location
+        - category
+        - priority
+
+    NewProblemNotification:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Новая неквалифицированная проблема: Нет воды в доме"
+        problem_id:
+          type: string
+          example: "12345"
+      required:
+        - message
+        - problem_id
+
+    NewRequestNotification:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Новая заявка: Прорыв трубы на улице"
+        request_id:
+          type: string
+          example: "67890"
+      required:
+        - message
+        - request_id
+
+    NewReportNotification:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Новый отчёт по завершённой проблеме: Нет воды в доме"
+      required:
+        - message
+
+    Report:
+      type: object
+      properties:
+        problem_id:
+          type: string
+        closed_at:
+          type: string
+          format: date-time
+        category:
+          type: string
+        service:
+          type: string
+        report_date:
+          type: string
+          format: date-time
+      required:
+        - problem_id
+        - closed_at
+        - category
+        - service
+        - report_date
+
+    Location:
+      type: object
+      properties:
+        latitude:
+          type: number
+          example: 55.7558
+        longitude:
+          type: number
+          example: 37.6176
+      required:
+        - latitude
+        - longitude
+
+    Assignment:
+      type: object
+      properties:
+        service:
+          type: string
+          enum: ["Юг", "Запад", "Восток", "Центр"]
+        employee:
+          type: string
+          example: "Иван Петров"
+      required:
+        - service
+        - employee
+
+    ActiveTask:
+      type: object
+      properties:
+        task_id:
+          type: string
+        status:
+          type: string
+          enum: ["В работе", "Ожидание", "В очереди", "Выполнено"]
+        deadline:
+          type: string
+          format: date-time
+        comment:
+          type: string
+        service:
+          type: string
+          example: "Юг"
+        assigned_employee:
+          type: string
+          example: "Иван Петров"
+      required:
+        - task_id
+        - status
+        - deadline
+        - service
+        - assigned_employee
+
+    ProblemUpdate:
+      type: object
+      properties:
+        category:
+          type: string
+          enum: ["Водоснабжение", "Электроснабжение", "Газоснабжение", "Ремонт", "Уборка"]
+        priority:
+          type: string
+          enum: ["Обычная","Средняя", "Экстренная"]
+      required:
+        - category
+        - priority
+
+    AssignmentUpdate:
+      type: object
+      properties:
+        service:
+          type: string
+          enum: ["Юг", "Запад", "Восток", "Центр"]
+        employee:
+          type: string
+      required:
+        - service
+        - employee
+
+    NotificationResponse:
+      type: object
+      properties:
+        notification_id:
+          type: string
+          example: "abcd1234"
+        type:
+          type: string
+          example: "new_problem"
+        message:
+          type: string
+          example: "Новая неквалифицированная проблема: Прорыв трубы."
+      required:
+        - notification_id
+        - type
+        - message
+    
+
+
+    ManageProblemScreen:
+      type: object
+      properties:
+        problem:
+          type: object
+          properties:
+            id:
+              type: string
+              example: "12345"
+            title:
+              type: string
+              example: "Нет воды в доме"
+            description:
+              type: string
+              example: "Прорыв трубы на улице"
+            location:
+              $ref: '#/components/schemas/Location'
+            category:
+              type: string
+              enum: ["Водоснабжение", "Электроснабжение", "Газоснабжение", "Ремонт", "Уборка"]
+            priority:
+              type: string
+              enum: ["Обычная", "Средняя", "Экстренная"]
+          required:
+            - id
+            - title
+            - description
+            - location
+            - category
+            - priority
+        services:
+          type: array
+          description: "Список доступных служб"
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: "Юг"
+              employees:
+                type: array
+                description: "Список сотрудников службы"
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      example: "emp123"
+                    name:
+                      type: string
+                      example: "Иван Петров"
+                  required:
+                    - id
+                    - name
+      required:
+        - name
+        - employees
+      
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Проблема с указанным ID не найдена"
