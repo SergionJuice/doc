@@ -1,7 +1,0 @@
-position: 5 # для сортировки папки в сайдбаре
-label: Прототипы низкой точности # название пункта меню в сайдбаре
-collapsible: true
-collapsed: true
-link:
-  type: generated-index
-  title: Прототипы низкой точности # Заголовок на странице
