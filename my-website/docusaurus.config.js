@@ -11,8 +11,8 @@ const simplePlantUML = require("@akebifiky/remark-simple-plantuml"); // объя
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'My Site',
-  tagline: 'Dinosaurs are cool',
+  title: 'Информационная система социального планирования городов',
+  tagline: 't-bank',
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
